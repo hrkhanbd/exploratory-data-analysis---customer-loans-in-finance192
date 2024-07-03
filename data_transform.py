@@ -119,7 +119,7 @@ if __name__ == "__main__":
     # Apply transformations
     transformed_df = transformer.apply_transformations()
 
-    # Save the transformed DataFrame back to CSV (if needed)
+    # Save the transformed DataFrame back to CSV (if needed!)
     transformed_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\transformed_loan_payments.csv'
     transformed_df.to_csv(transformed_csv_file_path, index=False)
     print(f"Transformed data saved to {transformed_csv_file_path}")
