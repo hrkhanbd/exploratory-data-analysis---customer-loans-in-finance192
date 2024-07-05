@@ -1,189 +1,76 @@
-# loan_data_analysis.py
+# loan_analysis.py
 
 import pandas as pd
-from data_transform import DataTransform
-from dataframe_info import DataFrameInfo
-from plotter import Plotter
-from dataframe_transform import DataFrameTransform
+import matplotlib.pyplot as plt
 
-# File paths
-original_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\loan_payments.csv'
-transformed_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\transformed_loan_payments.csv'
-cleaned_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\cleaned_loan_payments.csv'
-skewness_transformed_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\skewness_transformed_loan_payments.csv'
-outliers_removed_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\outliers_removed_loan_payments.csv'
+# Load the cleaned CSV file
+cleaned_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\cleaned_loan_payments_no_correlated.csv'
+df = pd.read_csv(cleaned_csv_file_path)
 
-# Load the original CSV file
-df = pd.read_csv(original_csv_file_path)
+# Check if the 'loan_amount' and 'total_payment' columns are present
+print("Columns in dataset:", df.columns)
+if 'loan_amount' not in df.columns:
+    raise KeyError("The 'loan_amount' column is missing from the dataset.")
+if 'total_payment' not in df.columns:
+    raise KeyError("The 'total_payment' column is missing from the dataset.")
 
-# Columns to exclude from transformations
-exclude_columns = ['id', 'member_id']
+# Summarize the current state of the loans
+total_funded = df['loan_amount'].sum()
+total_recovered = df['total_payment'].sum()
 
-# Initialize DataTransform with the DataFrame
-transformer = DataTransform(df)
+# Calculate the percentage of loans recovered
+recovered_percentage = (total_recovered / total_funded) * 100
 
-# Apply transformations, excluding specified columns
-transformed_df = transformer.apply_transformations()
+# Print the summary
+print(f"Total Loan Amount: ${total_funded:,.2f}")
+print(f"Total Recovered Amount: ${total_recovered:,.2f}")
+print(f"Percentage of Loans Recovered: {recovered_percentage:.2f}%")
 
-# Save the transformed DataFrame back to CSV
-transformed_df.to_csv(transformed_csv_file_path, index=False)
-print(f"Transformed data saved to {transformed_csv_file_path}")
+# Visualize the current state of the loans
+labels = ['Recovered', 'Outstanding']
+sizes = [total_recovered, total_funded - total_recovered]
+colors = ['#4CAF50', '#FF5733']
+explode = (0.1, 0)
 
-# Creating an instance of DataFrameInfo with the transformed DataFrame
-df_info = DataFrameInfo(transformed_df)
+print("Sizes for pie chart:", sizes)
 
-# Example usage
-print("Column Descriptions:\n", df_info.describe_columns())
-print("\nStatistics:\n", df_info.extract_statistics())
-print("\nDistinct Values Count in Categorical Columns:\n", df_info.count_distinct_values())
-print("\nDataFrame Shape:\n", df_info.shape())
-print("\nNULL Values Count:\n", df_info.null_values_count())
-print("\nHead:\n", df_info.head())
-print("\nTail:\n", df_info.tail())
-print("\nUnique Values in 'loan_status':\n", df_info.unique_values('loan_status'))
+plt.figure(figsize=(8, 6))
+plt.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
+plt.axis('equal')
+plt.title('Current State of Loan Recovery')
+plt.show()
 
-# Initialize DataFrameTransform with the transformed DataFrame
-df_transform = DataFrameTransform(transformed_df)
+# Attempt to calculate the projected recovery in the next 6 months
+print("Sample 'last_payment_date' values before conversion:")
+print(df['last_payment_date'].head(10))  # Inspect the first 10 values for diagnosis
 
-# Get missing values summary and drop columns with more than 50% missing values
-cleaned_df = df_transform.drop_missing_values(threshold=50)
+# Convert 'last_payment_date' to datetime format and suppress the warning
+with pd.option_context('mode.chained_assignment', None):
+    df['last_payment_date'] = pd.to_datetime(df['last_payment_date'], errors='coerce')
 
-# Impute missing values intelligently
-imputed_df = df_transform.intelligent_impute_missing_values(skew_threshold=1)
+print("Sample 'last_payment_date' values after conversion:")
+print(df['last_payment_date'].head(10))  # Inspect the first 10 values after conversion
 
-# Check for remaining NULL values
-final_missing_summary = df_transform.missing_values_summary()
-print("\nFinal Missing Values Summary:\n", final_missing_summary)
+if df['last_payment_date'].notna().sum() > 0:
+    # Calculate the projected recovery if valid dates are available
+    monthly_recovery_rate = total_recovered / (df['last_payment_date'].max() - df['last_payment_date'].min()).days * 30
+    projected_recovery_6_months = monthly_recovery_rate * 6
 
-# Save the cleaned DataFrame back to CSV
-imputed_df.to_csv(cleaned_csv_file_path, index=False)
-print(f"Cleaned data saved to {cleaned_csv_file_path}")
+    if projected_recovery_6_months < 0 or pd.isna(projected_recovery_6_months):
+        projected_recovery_6_months = 0
 
-# Load the original and cleaned CSV files for comparison
-original_df = pd.read_csv(original_csv_file_path)
-cleaned_df = pd.read_csv(cleaned_csv_file_path)
+    # Visualize the projected recovery
+    labels = ['Recovered', 'Projected Recovery 6 Months', 'Outstanding']
+    sizes = [total_recovered, projected_recovery_6_months, total_funded - total_recovered - projected_recovery_6_months]
+    colors = ['#4CAF50', '#FFD700', '#FF5733']
+    explode = (0.1, 0, 0)
 
-# Initialize DataFrameInfo to check the initial state of the original DataFrame
-original_df_info = DataFrameInfo(original_df)
+    print("Sizes for projected recovery pie chart:", sizes)
 
-# Check initial NULL values summary in the original DataFrame
-initial_missing_summary = original_df_info.null_values_count()
-print("\nInitial Missing Values Summary (Original Data):\n", initial_missing_summary)
-
-# Initialize DataFrameInfo to check the state of the cleaned DataFrame
-cleaned_df_info = DataFrameInfo(cleaned_df)
-
-# Check final NULL values summary in the cleaned DataFrame
-final_missing_summary = cleaned_df_info.null_values_count()
-print("\nFinal Missing Values Summary (Cleaned Data):\n", final_missing_summary)
-
-# Initialize Plotter with the cleaned DataFrame
-plotter = Plotter(cleaned_df)
-
-# Plot visualizations
-plotter.plot_histogram('loan_amount')
-plotter.plot_bar('loan_status')
-plotter.plot_missing_values_heatmap()
-
-# Plot comparison of missing values before and after removal
-plotter.plot_missing_values_comparison(original_df=original_df)
-
-# Step 1: Identify skewed columns in the cleaned data
-skew_threshold = 1  # You can adjust this threshold as needed
-df_transform_cleaned = DataFrameTransform(cleaned_df)
-skewed_columns = df_transform_cleaned.identify_skewed_columns(skew_threshold)
-print(f"\nSkewed Columns (Threshold > {skew_threshold}):\n", skewed_columns)
-
-# Initialize Plotter to visualize skewed columns
-plotter = Plotter(cleaned_df)
-
-# Visualize skewed columns using QQ plots
-if not skewed_columns.empty:
-    plotter.plot_qq_plots(skewed_columns.index, title="Original Skewed Columns QQ Plots")
+    plt.figure(figsize=(8, 6))
+    plt.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
+    plt.axis('equal')
+    plt.title('Projected Loan Recovery in Next 6 Months')
+    plt.show()
 else:
-    print("No skewed columns found with the given threshold.")
-
-# Step 2: Transform skewed columns to reduce skewness
-df_transform_cleaned.transform_skewed_columns(skew_threshold)
-
-# Access the transformed DataFrame
-transformed_skewed_df = df_transform_cleaned.df
-
-# Save the transformed DataFrame after skewness reduction
-transformed_skewed_df.to_csv(skewness_transformed_csv_file_path, index=False)
-print(f"Skewness transformed data saved to {skewness_transformed_csv_file_path}")
-
-# Step 4: Visualize the results of the transformations using QQ plots
-transformed_skewed_df = pd.read_csv(skewness_transformed_csv_file_path)
-plotter = Plotter(transformed_skewed_df)
-
-# Visualize the transformed skewed columns using QQ plots
-if not skewed_columns.empty:
-    plotter.plot_qq_plots(skewed_columns.index, title="Transformed Skewed Columns QQ Plots")
-else:
-    print("No skewed columns found with the given threshold.")
-
-# Plot comparison of skewness before and after transformation using histograms
-if not skewed_columns.empty:
-    plotter.plot_skewness_comparison(original_df=cleaned_df, transformed_df=transformed_skewed_df, columns=skewed_columns.index)
-else:
-    print("No skewed columns found with the given threshold.")
-
-# Additional Steps: Remove Outliers and Re-visualize
-
-# Step 1: Visualize data to identify outliers
-numeric_columns = cleaned_df.select_dtypes(include='number').columns.difference(exclude_columns)
-plotter.plot_boxplot(numeric_columns)
-
-# Step 2: Remove outliers
-df_no_outliers = df_transform_cleaned.remove_outliers(numeric_columns)
-
-# Save the DataFrame with outliers removed back to CSV
-df_no_outliers.to_csv(outliers_removed_csv_file_path, index=False)
-print(f"Data with outliers removed saved to {outliers_removed_csv_file_path}")
-
-# Step 3: Re-visualize the data to ensure outliers are removed
-plotter_no_outliers = Plotter(df_no_outliers)
-plotter_no_outliers.plot_boxplot(numeric_columns)
-
-# Side-by-Side Comparison of Outliers Before and After Cleaning
-plotter.plot_boxplot_comparison(original_df=cleaned_df, cleaned_df=df_no_outliers, columns=numeric_columns)
-
-# Continue with further analysis
-
-# Step 1: Identify skewed columns in the cleaned data without outliers
-df_transform_cleaned_no_outliers = DataFrameTransform(df_no_outliers)
-skewed_columns_no_outliers = df_transform_cleaned_no_outliers.identify_skewed_columns(skew_threshold)
-print(f"\nSkewed Columns After Outlier Removal (Threshold > {skew_threshold}):\n", skewed_columns_no_outliers)
-
-# Visualize skewed columns using QQ plots
-if not skewed_columns_no_outliers.empty:
-    plotter_no_outliers.plot_qq_plots(skewed_columns_no_outliers.index, title="Skewed Columns QQ Plots After Outlier Removal")
-else:
-    print("No skewed columns found with the given threshold.")
-
-# Step 2: Transform skewed columns to reduce skewness after outlier removal
-df_transform_cleaned_no_outliers.transform_skewed_columns(skew_threshold)
-
-# Access the transformed DataFrame
-transformed_skewed_df_no_outliers = df_transform_cleaned_no_outliers.df
-
-# Save the transformed DataFrame after skewness reduction
-transformed_skewed_df_no_outliers.to_csv(skewness_transformed_csv_file_path, index=False)
-print(f"Skewness transformed data after outlier removal saved to {skewness_transformed_csv_file_path}")
-
-# Step 4: Visualize the results of the transformations using QQ plots after outlier removal
-plotter_transformed_skewed_no_outliers = Plotter(transformed_skewed_df_no_outliers)
-
-# Visualize the transformed skewed columns using QQ plots
-if not skewed_columns_no_outliers.empty:
-    plotter_transformed_skewed_no_outliers.plot_qq_plots(skewed_columns_no_outliers.index, title="Transformed Skewed Columns QQ Plots After Outlier Removal")
-else:
-    print("No skewed columns found with the given threshold.")
-
-# Plot comparison of skewness before and after transformation using histograms
-if not skewed_columns_no_outliers.empty:
-    plotter_transformed_skewed_no_outliers.plot_skewness_comparison(original_df=df_no_outliers, transformed_df=transformed_skewed_df_no_outliers, columns=skewed_columns_no_outliers.index)
-else:
-    print("No skewed columns found with the given threshold.")
-
+    print("No valid 'last_payment_date' available for projections. Skipping the projected recovery visualization.")

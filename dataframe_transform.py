@@ -10,7 +10,9 @@ class DataFrameTransform:
     def drop_missing_values(self, threshold: float = 50):
         missing_percent = self.df.isnull().mean() * 100
         cols_to_drop = missing_percent[missing_percent > threshold].index
+        print("Columns before dropping missing values:", self.df.columns)
         self.df = self.df.drop(columns=cols_to_drop)
+        print("Columns after dropping missing values:", self.df.columns)
         return self.df
 
     def intelligent_impute_missing_values(self, skew_threshold: float = 1):
@@ -52,4 +54,3 @@ class DataFrameTransform:
                     upper_bound = Q3 + 1.5 * IQR
                     self.df = self.df[(self.df[col] >= lower_bound) & (self.df[col] <= upper_bound)]
         return self.df
-

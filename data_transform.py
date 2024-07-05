@@ -28,7 +28,6 @@ class DataTransform:
     def convert_to_datetime(self, column_name: str):
         """
         Converts a column to datetime format using the dateutil parser.
-        Keeps the original format 'Mon-YY' after conversion.
 
         :param column_name: The name of the column to convert.
         """
@@ -36,7 +35,7 @@ class DataTransform:
             if pd.isnull(x):
                 return x
             try:
-                return parser.parse(x, dayfirst=False, yearfirst=True).strftime('%b-%y')
+                return parser.parse(x, dayfirst=False, yearfirst=True)
             except Exception:
                 return x
 
@@ -119,9 +118,7 @@ if __name__ == "__main__":
     # Apply transformations
     transformed_df = transformer.apply_transformations()
 
-    # Save the transformed DataFrame back to CSV (if needed!)
+    # Save the transformed DataFrame back to CSV (if needed)
     transformed_csv_file_path = 'D:\\Aicore\\EDA_Project\\exploratory-data-analysis---customer-loans-in-finance192\\transformed_loan_payments.csv'
     transformed_df.to_csv(transformed_csv_file_path, index=False)
     print(f"Transformed data saved to {transformed_csv_file_path}")
-
-
